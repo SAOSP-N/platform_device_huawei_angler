@@ -36,7 +36,9 @@ PRODUCT_COPY_FILES += \
     device/huawei/angler/init.angler.usb.rc:root/init.angler.usb.rc \
     device/huawei/angler/fstab.angler:root/fstab.angler \
     device/huawei/angler/ueventd.angler.rc:root/ueventd.angler.rc \
-    device/huawei/angler/init.angler.power.sh:system/bin/init.angler.power.sh
+    device/huawei/angler/init.recovery.angler.rc:root/init.recovery.angler.rc \
+    device/huawei/angler/init.angler.power.sh:system/bin/init.angler.power.sh \
+    device/huawei/angler/uinput-fpc.kl:system/usr/keylayout/uinput-fpc.kl
 
 ifeq ($(TARGET_USES_CHINOOK_SENSORHUB),true)
 PRODUCT_COPY_FILES += \
@@ -48,6 +50,9 @@ endif
 
 PRODUCT_COPY_FILES += \
     device/huawei/angler/init.mcfg.sh:system/bin/init.mcfg.sh
+
+PRODUCT_COPY_FILES += \
+    device/huawei/angler/init.radio.sh:system/bin/init.radio.sh
 
 # Thermal configuration
 PRODUCT_COPY_FILES += \
@@ -429,7 +434,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
 ifeq (,$(filter aosp_angler, $(TARGET_PRODUCT)))
 PRODUCT_PACKAGES += \
-    QXDMLogger
+    QXDMLoggerV2
 endif # aosp_angler
 
 PRODUCT_COPY_FILES += \
@@ -450,6 +455,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # OEM Unlock reporting
 ADDITIONAL_DEFAULT_PROPERTIES += \
     ro.oem_unlock_supported=1
+
+# ro.product.first_api_level indicates the first api level the device has commercially launched on.
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.product.first_api_level=23
 
 # In userdebug, add minidebug info the the boot image and the system server to support
 # diagnosing native crashes.
@@ -473,9 +482,19 @@ $(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4358
 
 # GPS configuration
 PRODUCT_COPY_FILES += \
-    device/huawei/angler/location/etc/gps.conf:system/etc/gps.conf:qcom
+    device/huawei/angler/gps.conf:system/etc/gps.conf:qcom
 
 # setup dm-verity configs.
 PRODUCT_SYSTEM_VERITY_PARTITION := /dev/block/platform/soc.0/f9824900.sdhci/by-name/system
 PRODUCT_VENDOR_VERITY_PARTITION := /dev/block/platform/soc.0/f9824900.sdhci/by-name/vendor
 $(call inherit-product, build/target/product/verity.mk)
+
+# b/28992626
+# For app investigation, make ASAN-lite only sanitize 32-bit.
+ifeq (true,$(SANITIZE_LITE))
+  SANITIZE_ARCH := 32
+endif
+
+# b/29995499
+$(call add-product-sanitizer-module-config,cameraserver,never)
+$(call add-product-sanitizer-module-config,mm-qcamera-daemon,never)
